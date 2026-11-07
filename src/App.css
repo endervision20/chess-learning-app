@@ -1454,3 +1454,6 @@ body.line-dragging .folder-tile { outline: 1px dashed #6f8f4a; }
   .log-meta, .log-main .badge, .log-main.static .note { display: none; }
 }
 html { touch-action: manipulation; }
+@media (max-width: 700px) {
+  .menu, .game-layout { padding-top: 16px; }
+}

@@ -58,6 +58,48 @@ jobs:
       - name: Generate app icons from the logo
         run: npx tauri icon src-tauri/icons/app-icon.png
 
+      # Hide the status bar (clock/notifications) while the app is open. A swipe down from the
+      # top edge shows it briefly. The package line is copied from the generated file.
+      - name: Hide the status bar
+        run: |
+          FILE=$(find src-tauri/gen/android -name MainActivity.kt | head -n 1)
+          PKG=$(grep -m 1 '^package ' "$FILE")
+          cat > "$FILE" <<EOF
+          $PKG
+
+          import android.os.Build
+          import android.os.Bundle
+          import android.view.WindowManager
+          import androidx.core.view.WindowCompat
+          import androidx.core.view.WindowInsetsCompat
+          import androidx.core.view.WindowInsetsControllerCompat
+
+          class MainActivity : TauriActivity() {
+            override fun onCreate(savedInstanceState: Bundle?) {
+              super.onCreate(savedInstanceState)
+              hideStatusBar()
+            }
+
+            override fun onWindowFocusChanged(hasFocus: Boolean) {
+              super.onWindowFocusChanged(hasFocus)
+              if (hasFocus) hideStatusBar()
+            }
+
+            private fun hideStatusBar() {
+              WindowCompat.setDecorFitsSystemWindows(window, false)
+              if (Build.VERSION.SDK_INT >= 28) {
+                window.attributes.layoutInDisplayCutoutMode =
+                  WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+              }
+              val controller = WindowInsetsControllerCompat(window, window.decorView)
+              controller.hide(WindowInsetsCompat.Type.statusBars())
+              controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+          }
+          EOF
+          cat "$FILE"
+
       # aarch64 covers practically every modern phone and keeps the build short.
       - name: Build APK
         run: npm run tauri android build -- --apk --debug --target aarch64
