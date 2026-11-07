@@ -94,6 +94,8 @@ export function useHoldDrag(onDrop: (key: string, target: string) => void) {
       window.removeEventListener("pointercancel", onCancel);
       window.removeEventListener("touchmove", noDefault);
       window.removeEventListener("contextmenu", noDefault);
+      el.removeEventListener("touchmove", noDefault);
+      el.removeEventListener("contextmenu", noDefault);
       document.body.classList.remove("line-dragging");
       clone?.remove();
       clone = null;
@@ -168,6 +170,11 @@ export function useHoldDrag(onDrop: (key: string, target: string) => void) {
     window.addEventListener("pointercancel", onCancel);
     window.addEventListener("touchmove", noDefault, { passive: false });
     window.addEventListener("contextmenu", noDefault);
+    // On a touch screen every touch event keeps going to the element that was pressed, even after the caller
+    // stops drawing it (which is what "picking it up" does). Once it is out of the page those events never
+    // reach `window`, so the page would start scrolling and cancel the drag. Listening on the item itself fixes that.
+    el.addEventListener("touchmove", noDefault, { passive: false });
+    el.addEventListener("contextmenu", noDefault);
     cleanup.current = stop;
 
     if (!isMouse) timer = window.setTimeout(begin, HOLD_MS);

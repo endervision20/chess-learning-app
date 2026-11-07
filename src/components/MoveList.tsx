@@ -36,7 +36,15 @@ export function MoveList({
   const activeRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: "nearest" });
+    // Scroll only the move list itself. scrollIntoView() also scrolls the whole page, which dragged the
+    // screen down to the move history after every move.
+    const el = activeRef.current;
+    const box = el?.closest(".move-list") as HTMLElement | null;
+    if (!el || !box) return;
+    const e = el.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    if (e.top < b.top) box.scrollTop -= b.top - e.top;
+    else if (e.bottom > b.bottom) box.scrollTop += e.bottom - b.bottom;
   }, [viewIndex, sans.length]);
 
   const renderMarks = (mark?: MoveMark) =>

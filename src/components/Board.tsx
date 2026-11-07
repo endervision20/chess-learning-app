@@ -46,6 +46,7 @@ export function Board({
   onMove,
 }: BoardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const cgRef = useRef<Api | null>(null);
   const onMoveRef = useRef(onMove);
   onMoveRef.current = onMove;
@@ -99,6 +100,23 @@ export function Board({
     return () => {
       cg.destroy();
       cgRef.current = null;
+    };
+  }, []);
+
+  // Chessground works out which square you touched from a cached copy of the board's position, and only
+  // clears that cache on scroll/resize. If anything above the board shifts (a bar appears, the status bar
+  // hides), touches land on the wrong square. Clearing the cache at the start of every touch fixes that.
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const refresh = () => document.dispatchEvent(new Event("scroll"));
+    wrap.addEventListener("touchstart", refresh, { capture: true, passive: true });
+    wrap.addEventListener("mousedown", refresh, { capture: true, passive: true });
+    window.addEventListener("orientationchange", refresh);
+    return () => {
+      wrap.removeEventListener("touchstart", refresh, { capture: true });
+      wrap.removeEventListener("mousedown", refresh, { capture: true });
+      window.removeEventListener("orientationchange", refresh);
     };
   }, []);
 
@@ -162,7 +180,7 @@ export function Board({
   };
 
   return (
-    <div className="board-wrap">
+    <div className="board-wrap" ref={wrapRef}>
       <div ref={containerRef} className="board-container" />
       {promo && (
         <div className="promo-overlay" onClick={cancelPromo}>
