@@ -22,11 +22,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
-
+      # The ubuntu runner already ships the Android SDK, so no setup action is needed.
       - name: Install Android SDK pieces and NDK
         run: |
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "ndk;${NDK_VERSION}"
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "platforms;android-34" "build-tools;34.0.0" "ndk;${NDK_VERSION}"
           echo "NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
