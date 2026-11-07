@@ -1,0 +1,79 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # also lets you press "Run workflow" by hand
+
+permissions:
+  contents: write # needed to publish the release
+
+env:
+  NDK_VERSION: "27.0.12077973"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK pieces and NDK
+        run: |
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "ndk;${NDK_VERSION}"
+          echo "NDK_HOME=${ANDROID_HOME}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      # Generates src-tauri/gen/android if you haven't committed it.
+      - name: Init Android project
+        run: |
+          if [ ! -d src-tauri/gen/android ]; then
+            npx tauri android init --ci
+          fi
+
+      # aarch64 covers practically every modern phone and keeps the build short.
+      - name: Build APK
+        run: npm run tauri android build -- --apk --debug --target aarch64
+
+      - name: Collect APK
+        run: |
+          APK=$(find src-tauri/gen/android -name '*.apk' | head -n 1)
+          echo "Found: $APK"
+          cp "$APK" chess-learning-app.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chess-learning-app-apk
+          path: chess-learning-app.apk
+
+      # Replaces a single "latest" release each time, so the download link stays the same.
+      - name: Publish to the "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest chess-learning-app.apk \
+            --title "Latest build" \
+            --notes "Built from commit ${GITHUB_SHA::7}" \
+            --prerelease
