@@ -49,8 +49,9 @@ export function evalFromInfo(info: EngineInfo, turn: Color): EvalState {
 
 // Single-threaded build on purpose: multi-threaded WASM needs SharedArrayBuffer, which needs
 // cross-origin-isolation headers that the Android WebView doesn't give you.
-// Change the file name to match whichever build you copied into public/stockfish/.
-const ENGINE_URL = "/stockfish/stockfish-19-lite-single.js";
+// The two files come from node_modules/stockfish/bin/ and must sit side by side in public/stockfish/:
+//   stockfish-19-lite-single.js  and  stockfish-19-lite-single.wasm
+const ENGINE_URL = `${import.meta.env.BASE_URL}stockfish/stockfish-19-lite-single.js`;
 
 export class StockfishEngine {
   private worker: Worker | null = null;
@@ -68,23 +69,41 @@ export class StockfishEngine {
   }
 
   private async start() {
-    // Stockfish compiled to WebAssembly, running in a Web Worker (works on desktop and Android).
-    // The files live in /public/stockfish/ - see ENGINE_URL below.
-    this.worker = new Worker(ENGINE_URL);
-    this.worker.onmessage = (ev: MessageEvent) => {
-      const text = typeof ev.data === "string" ? ev.data : String(ev.data);
-      for (const raw of text.split(/\r?\n/)) {
-        const line = raw.trim();
-        if (line) this.listeners.forEach((fn) => fn(line));
-      }
-    };
-    this.worker.onerror = (e) => console.warn("[stockfish worker error]", e.message);
+    await Promise.resolve(); // lets init() store the promise before any failure can reset it
+    try {
+      // Stockfish compiled to WebAssembly, running in a Web Worker (works on desktop and Android).
+      const worker = new Worker(ENGINE_URL);
+      this.worker = worker;
+      worker.onmessage = (ev: MessageEvent) => {
+        const text = typeof ev.data === "string" ? ev.data : String(ev.data);
+        for (const raw of text.split(/\r?\n/)) {
+          const line = raw.trim();
+          if (line) this.listeners.forEach((fn) => fn(line));
+        }
+      };
 
-    await this.sendAndWait("uci", "uciok");
-    for (const [name, value] of Object.entries(this.options)) {
-      await this.write(`setoption name ${name} value ${value}`);
+      // If the worker file is missing or broken, fail loudly instead of waiting forever.
+      const failed = new Promise<never>((_, reject) => {
+        worker.onerror = (e) =>
+          reject(new Error(`Stockfish worker failed to load (${ENGINE_URL}): ${e.message || "no details"}`));
+      });
+      failed.catch(() => {});
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Stockfish did not answer within 20 seconds")), 20000)
+      );
+
+      await Promise.race([this.sendAndWait("uci", "uciok"), failed, timeout]);
+      for (const [name, value] of Object.entries(this.options)) {
+        await this.write(`setoption name ${name} value ${value}`);
+      }
+      await Promise.race([this.sendAndWait("isready", "readyok"), failed, timeout]);
+    } catch (e) {
+      console.error("[stockfish]", e);
+      this.worker?.terminate();
+      this.worker = null;
+      this.initPromise = null; // allow a retry next time
+      throw e;
     }
-    await this.sendAndWait("isready", "readyok");
   }
 
   private waitFor(prefix: string): Promise<string> {

@@ -1445,8 +1445,12 @@ body.line-dragging .folder-tile { outline: 1px dashed #6f8f4a; }
   background: #3f4a35;
 }
 @media (max-width: 700px) {
-  :root { --board: calc(min(100vw - 54px, 100dvh - 280px) * var(--board-scale, 1)); }
+  :root { --board: calc(min(100vw - 70px, 100dvh - 340px) * var(--board-scale, 1)); }
   .game-layout { flex-direction: column; align-items: center; padding: 8px; gap: 8px; }
   .side-panel { width: 100%; height: auto; }
   .guide-home { padding: 12px; }
 }
+@media (max-width: 700px) {
+  .log-meta, .log-main .badge, .log-main.static .note { display: none; }
+}
+html { touch-action: manipulation; }

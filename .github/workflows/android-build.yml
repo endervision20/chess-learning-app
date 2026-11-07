@@ -53,6 +53,11 @@ jobs:
             npx tauri android init --ci
           fi
 
+      # Android icons must be generated AFTER the Android project exists, otherwise the
+      # default Tauri icon is used. app-icon.png is the logo with padding for adaptive icons.
+      - name: Generate app icons from the logo
+        run: npx tauri icon src-tauri/icons/app-icon.png
+
       # aarch64 covers practically every modern phone and keeps the build short.
       - name: Build APK
         run: npm run tauri android build -- --apk --debug --target aarch64
