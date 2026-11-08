@@ -61,6 +61,7 @@ export interface Settings {
   autoQueen: boolean;
   dragGhost: boolean;
   confirmResign: boolean;
+  sounds: boolean; // move / capture / check / mate sounds
   maxPaused: number; // 1 - 10
   botThinkMs: number; // untimed games: how long the bot thinks per move
   botSpeed: number; // timed games: 0.5 - 2 (how much of its clock the bot uses)
@@ -108,6 +109,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoQueen: false,
   dragGhost: true,
   confirmResign: true,
+  sounds: true,
   maxPaused: 5,
   botThinkMs: 600,
   botSpeed: 1,
@@ -127,7 +129,7 @@ export const DEFAULT_SETTINGS: Settings = {
   analysisMinDepth: 14,
   analysisLines: 3,
   threads: 2,
-  hashMb: 32,
+  hashMb: 128,
 
   reviewDepth: 14,
   statsPeriod: "g50",
@@ -142,7 +144,7 @@ export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
     "showLastMove", "showLegalMoves", "showCheck", "animation",
   ],
   playing: [
-    "premove", "autoQueen", "dragGhost", "confirmResign", "maxPaused", "botThinkMs", "botSpeed",
+    "premove", "autoQueen", "dragGhost", "confirmResign", "sounds", "maxPaused", "botThinkMs", "botSpeed",
   ],
   newgame: ["defaultElo", "defaultColor", "defaultTimeControl", "defaultShowEval", "defaultHelped"],
   engine: [
@@ -197,6 +199,7 @@ export function sanitize(raw: unknown): Settings {
     autoQueen: bool("autoQueen"),
     dragGhost: bool("dragGhost"),
     confirmResign: bool("confirmResign"),
+    sounds: bool("sounds"),
     maxPaused: num("maxPaused", 1, 10, true),
     botThinkMs: num("botThinkMs", 100, 5000, true),
     botSpeed: num("botSpeed", 0.5, 2),

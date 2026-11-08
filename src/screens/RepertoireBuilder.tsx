@@ -184,7 +184,7 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
 
       <div className="side-panel wide">
         <div className="status">
-          <span>Editing: {rep.name || "Untitled repertoire"}</span>
+          <span className="quiet">Editing: {rep.name || "Untitled repertoire"}</span>
           <span className="badges">
             <span className="badge">{rep.side === "white" ? "White" : "Black"}</span>
           </span>

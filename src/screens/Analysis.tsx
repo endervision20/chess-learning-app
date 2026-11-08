@@ -325,8 +325,8 @@ export function Analysis({ initial, onHome }: AnalysisProps) {
       </div>
 
       <div className="side-panel wide">
-        <div className="status">{header}</div>
-        <div className="header-note">
+        <div className={game ? "status" : "status quiet"}>{header}</div>
+        <div className={engineError || (!viewing && finalOutcome) ? "header-note" : "header-note quiet"}>
           {engineError ? "Stockfish failed to start (see console)" : note}
         </div>
         <div className="analysis-controls">

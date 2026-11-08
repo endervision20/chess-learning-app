@@ -309,6 +309,12 @@ export function SettingsPage({ settings: s, onChange, onBack }: SettingsPageProp
               value={s.confirmResign}
               onChange={(v) => set("confirmResign", v)}
             />
+            <Toggle
+              label="Play move sounds"
+              note="Move, capture, check and checkmate sounds."
+              value={s.sounds}
+              onChange={(v) => set("sounds", v)}
+            />
             <SliderRow
               label="Paused games to keep"
               min={1}

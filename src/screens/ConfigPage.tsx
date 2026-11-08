@@ -41,7 +41,7 @@ export function ConfigPage({ initial, onBack, onStart }: ConfigPageProps) {
   );
 
   return (
-    <div className="game-layout">
+    <div className="game-layout config-layout">
       <BackButton onClick={onBack} />
       <div className="board-row">
         {cfg.showEval && <EvalBar pct={50} label="0.0" orientation={orientation} />}
@@ -62,7 +62,7 @@ export function ConfigPage({ initial, onBack, onStart }: ConfigPageProps) {
       </div>
 
       <div className="side-panel">
-        <div className="status">Game setup</div>
+        <div className="status quiet">Game setup</div>
 
         <div className="setup-card">
           <div className="field">

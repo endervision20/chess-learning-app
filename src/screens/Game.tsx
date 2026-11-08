@@ -8,6 +8,7 @@ import { Board } from "../components/Board";
 import { EvalBar } from "../components/EvalBar";
 import { GameResultPopup } from "../components/GameResultPopup";
 import { MoveList } from "../components/MoveList";
+import { MoveStrip } from "../components/MoveStrip";
 import { PlayerBar } from "../components/PlayerBar";
 import { analysisEngine, botEngine, evalEngine } from "../engine/stockfish";
 import { useEngineEval } from "../hooks/useEngineEval";
@@ -65,9 +66,6 @@ const EVAL_GO = `depth ${EVAL_TARGET_DEPTH} movetime ${EVAL_MAX_MS}`;
 const HINT_GO = "depth 16 movetime 2500";
 // Helped mode checks each of your moves at this depth (lower = quicker)
 const HELP_DEPTH = 12; */
-
-
-
 
 interface GameProps {
   config: GameConfig;
@@ -638,6 +636,9 @@ export function Game({
   const hintLabel =
     hintBusy ? "Thinking..." : hintUses === 0 ? "Hint" : hintUses === 1 ? "Hint: show move" : "Hint used";
 
+  // On a phone the status line is hidden unless it has something worth saying
+  const statusQuiet = engineReady && !engineError && !warning && !checking;
+
   return (
     <div className="game-layout">
       <BackButton
@@ -647,6 +648,7 @@ export function Game({
           else setConfirm("home");
         }}
       />
+      <MoveStrip sans={sans} viewIndex={viewIndex} onSelect={goTo} />
       <div className="board-row">
         {config.showEval && (
           <EvalBar
@@ -690,9 +692,9 @@ export function Game({
         </div>
       </div>
 
-      <div className="side-panel">
-        <div className="status">
-          <span>{status}</span>
+      <div className="side-panel game-panel">
+        <div className={`status ${statusQuiet && !config.helped && assistTotal === 0 ? "quiet" : ""}`}>
+          <span className={statusQuiet ? "quiet" : ""}>{status}</span>
           <span className="badges">
             {config.helped && (
               <span className="badge helped" title={helpText ? `Helped: ${helpText}` : "Helped mode is on"}>

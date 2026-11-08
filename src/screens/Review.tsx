@@ -35,6 +35,20 @@ import {
 
 const NO_DESTS = new Map<Key, Key[]>();
 
+// Colour of the grade icon that sits on the square the piece moved to
+const CLASS_COLOR: Record<MoveClass, string> = {
+  brilliant: "#26c2a3",
+  great: "#5c8bb0",
+  best: "#7fc16a",
+  excellent: "#96bc4b",
+  good: "#a3b78a",
+  book: "#a88865",
+  inaccuracy: "#f0c15c",
+  miss: "#e58f2a",
+  mistake: "#e0825a",
+  blunder: "#ca3431",
+};
+
 interface ReviewProps {
   init: ReviewInit;
   onHome: () => void;
@@ -116,14 +130,24 @@ export function Review({ init, onHome, onAnalyse }: ReviewProps) {
   const lastMove = ply > 0 ? [game.moves[ply - 1].from, game.moves[ply - 1].to] : undefined;
   const material = materialInfo(here.fen);
 
-  // Arrow showing the move that should have been played
+  // The grade icon sits on the corner of the square the piece moved to. For a bad move, an arrow also shows the better one.
+  const showBetter =
+    !!reviewed?.best && ["inaccuracy", "miss", "mistake", "blunder"].includes(reviewed.cls);
   const shapes = useMemo<DrawShape[]>(() => {
-    if (!reviewed?.best) return [];
-    if (!["inaccuracy", "miss", "mistake", "blunder"].includes(reviewed.cls)) return [];
-    const b = parseUciMove(reviewed.best);
-    return [{ orig: b.from, dest: b.to, brush: "green" }];
-  }, [reviewed]);
-  
+    const out: DrawShape[] = [];
+    if (reviewed && ply > 0) {
+      out.push({
+        orig: game.moves[ply - 1].to,
+        label: { text: CLASS_META[reviewed.cls].symbol, fill: CLASS_COLOR[reviewed.cls] },
+      });
+    }
+    if (showBetter && reviewed?.best) {
+      const b = parseUciMove(reviewed.best);
+      out.push({ orig: b.from, dest: b.to, brush: "green" });
+    }
+    return out;
+  }, [reviewed, ply, showBetter, game.moves]);
+
   // Review grade (and any hint lightbulbs) beside each move
   const marks = useMemo<(MoveMark | undefined)[]>(
     () =>
@@ -180,7 +204,7 @@ export function Review({ init, onHome, onAnalyse }: ReviewProps) {
     if (reviewed.loss >= 5) moveInfo += ` (-${reviewed.loss.toFixed(0)}% win chance)`;
   }
   const bestText =
-    reviewed?.best && shapes.length > 0
+    showBetter && reviewed?.best
       ? `Better: ${pvToSan(plies[ply - 1].fen, [reviewed.best], 1)}`
       : "";
 
@@ -217,7 +241,7 @@ export function Review({ init, onHome, onAnalyse }: ReviewProps) {
 
       <div className="side-panel wide">
         <div className="status">
-          <span>Game review</span>
+          <span className="quiet">Game review</span>
           <span className="note">{resultText}</span>
         </div>
 
