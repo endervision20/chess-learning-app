@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Key } from "chessground/types";
 
 import { BackButton } from "../components/BackButton";
+import { MoveStrip } from "../components/MoveStrip";
 import { Board } from "../components/Board";
 import { MoveList, type MoveMark } from "../components/MoveList";
 import { otherColor, pvToSan, replay } from "../chessLogic";
@@ -83,6 +84,7 @@ export function RepertoireStudy({ rep, line, onBack, onEdit, onPractise }: Study
   return (
     <div className="game-layout">
       <BackButton onClick={onBack} />
+      <MoveStrip sans={built.sans} viewIndex={ply} onSelect={goTo} />
       <div className="board-col">
         <div className="bar-spacer" />
         <Board
@@ -100,7 +102,7 @@ export function RepertoireStudy({ rep, line, onBack, onEdit, onPractise }: Study
         <div className="bar-spacer" />
       </div>
 
-      <div className="side-panel wide">
+      <div className="side-panel wide game-panel">
         <div className="status">
           <span>{line.name}</span>
           <span className="badges">

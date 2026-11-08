@@ -61,6 +61,7 @@ function Body({ initial, onBack, onOpen, onPractise }: EditorProps & { initial: 
   const [first, setFirst] = useState<string | null>(null); // Black: the White first move being looked at
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
   const [msg, setMsg] = useState("");
   const [saveError, setSaveError] = useState(false);
 
@@ -184,6 +185,7 @@ function Body({ initial, onBack, onOpen, onPractise }: EditorProps & { initial: 
   );
 
   const menuItems: MenuItem[] = [
+    { label: "Edit name / description", onClick: () => setEditingDetails(true) },
     { label: "Duplicate", onClick: duplicate },
     { label: "Export…", onClick: () => setExporting(true) },
     { label: "Delete repertoire", danger: true, onClick: () => setConfirmDelete(true) },
@@ -209,6 +211,7 @@ function Body({ initial, onBack, onOpen, onPractise }: EditorProps & { initial: 
         change={change}
         saveError={saveError}
         startLine={page.at}
+        onEditDetails={() => setEditingDetails(true)}
         onBack={() => {
           flush();
           setPage({ kind: "home" });
@@ -252,6 +255,37 @@ function Body({ initial, onBack, onOpen, onPractise }: EditorProps & { initial: 
                 Delete repertoire
               </button>
               <button onClick={() => setConfirmDelete(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingDetails && (
+        <div className="guide-overlay" onClick={() => setEditingDetails(false)}>
+          <div
+            className="guide-overlay-box"
+            style={{ width: "min(520px, 92vw)" }}
+            onClick={(ev) => ev.stopPropagation()}
+          >
+            <div className="field-label">Name</div>
+            <input
+              className="opening-search"
+              value={rep.name}
+              placeholder="Repertoire name"
+              onChange={(ev) => change((r) => ({ ...r, name: ev.target.value }))}
+            />
+            <div className="field-label">Description</div>
+            <textarea
+              className="paste-box"
+              rows={5}
+              placeholder="What is this repertoire about? Plans, ideas, who it suits..."
+              value={rep.description}
+              onChange={(ev) => change((r) => ({ ...r, description: ev.target.value }))}
+            />
+            <div className="confirm-buttons">
+              <button className="primary" onClick={() => setEditingDetails(false)}>
+                Done
+              </button>
             </div>
           </div>
         </div>

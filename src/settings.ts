@@ -44,6 +44,7 @@ export interface Settings {
   uiScale: number; // 0.7 - 1.2: side panels
   boardScale: number; // 0.7 - 1.1: the board itself
   accent: string; // id from ACCENTS
+  tileColumns: number; // 0 = fit as many as the screen allows, 1 - 5 = exactly that many tiles per row
 
   // ----- Board -----
   boardTheme: BoardTheme;
@@ -61,7 +62,6 @@ export interface Settings {
   autoQueen: boolean;
   dragGhost: boolean;
   confirmResign: boolean;
-  sounds: boolean; // move / capture / check / mate sounds
   maxPaused: number; // 1 - 10
   botThinkMs: number; // untimed games: how long the bot thinks per move
   botSpeed: number; // timed games: 0.5 - 2 (how much of its clock the bot uses)
@@ -93,6 +93,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   uiScale: 1,
   boardScale: 1,
+  tileColumns: 0,
   accent: "green",
 
   boardTheme: "classic",
@@ -109,7 +110,6 @@ export const DEFAULT_SETTINGS: Settings = {
   autoQueen: false,
   dragGhost: true,
   confirmResign: true,
-  sounds: true,
   maxPaused: 5,
   botThinkMs: 600,
   botSpeed: 1,
@@ -138,13 +138,13 @@ export const DEFAULT_SETTINGS: Settings = {
 
 // Which fields the Settings page groups together (used by its per-section Reset buttons)
 export const SECTION_KEYS: Record<string, (keyof Settings)[]> = {
-  appearance: ["uiScale", "boardScale", "accent"],
+  appearance: ["uiScale", "boardScale", "accent", "tileColumns"],
   board: [
     "boardTheme", "boardLight", "boardDark", "lastMoveColor", "showCoordinates",
     "showLastMove", "showLegalMoves", "showCheck", "animation",
   ],
   playing: [
-    "premove", "autoQueen", "dragGhost", "confirmResign", "sounds", "maxPaused", "botThinkMs", "botSpeed",
+    "premove", "autoQueen", "dragGhost", "confirmResign", "maxPaused", "botThinkMs", "botSpeed",
   ],
   newgame: ["defaultElo", "defaultColor", "defaultTimeControl", "defaultShowEval", "defaultHelped"],
   engine: [
@@ -183,6 +183,7 @@ export function sanitize(raw: unknown): Settings {
   return {
     uiScale: num("uiScale", 0.7, 1.2),
     boardScale: num("boardScale", 0.7, 1.1),
+    tileColumns: num("tileColumns", 0, 5, true),
     accent: oneOf("accent", ACCENTS.map((a) => a.id)),
 
     boardTheme: oneOf("boardTheme", BOARD_THEMES.map((t) => t.id)),
@@ -199,7 +200,6 @@ export function sanitize(raw: unknown): Settings {
     autoQueen: bool("autoQueen"),
     dragGhost: bool("dragGhost"),
     confirmResign: bool("confirmResign"),
-    sounds: bool("sounds"),
     maxPaused: num("maxPaused", 1, 10, true),
     botThinkMs: num("botThinkMs", 100, 5000, true),
     botSpeed: num("botSpeed", 0.5, 2),
@@ -257,6 +257,15 @@ export function applySettings(s: Settings) {
   const style = root.style;
   style.setProperty("--ui", String(s.uiScale));
   style.setProperty("--board-scale", String(s.boardScale));
+  // tiles per row (0 = automatic)
+  if (s.tileColumns > 0) {
+    style.setProperty("--tile-cols", String(s.tileColumns));
+    style.setProperty("--tile-min", "0px");
+  } else {
+    style.removeProperty("--tile-cols");
+    style.removeProperty("--tile-min");
+  }
+  root.dataset.tileCols = String(s.tileColumns);
 
   const theme = BOARD_THEMES.find((t) => t.id === s.boardTheme) ?? BOARD_THEMES[0];
   const light = s.boardTheme === "custom" ? s.boardLight : theme.light;

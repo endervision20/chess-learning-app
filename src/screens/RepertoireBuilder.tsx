@@ -3,12 +3,13 @@ import type { Key } from "chessground/types";
 
 import { BackButton } from "../components/BackButton";
 import { Board } from "../components/Board";
+import { DotsMenu } from "../components/DotsMenu";
 import { MoveList, type MoveMark } from "../components/MoveList";
+import { MoveStrip } from "../components/MoveStrip";
 import { destsFromFen, otherColor, pvToSan, replay } from "../chessLogic";
 import { moveToUci, ucisToMoves } from "../lineTools";
 import { openingAt } from "../openings";
 import {
-  addLinesFromText,
   addMove,
   childrenAt,
   countLines,
@@ -29,20 +30,19 @@ interface BuilderProps {
   change: (fn: (r: Repertoire) => Repertoire) => void;
   saveError: boolean;
   startLine: string[]; // the position to open at (and the line shown from it)
+  onEditDetails: () => void; // opens the name / description dialog
   onBack: () => void;
 }
 
 /** Where lines are made: play moves on the board, branch freely, write notes, or paste many lines at once. */
-export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }: BuilderProps) {
+export function RepertoireBuilder({ rep, change, saveError, startLine, onEditDetails, onBack }: BuilderProps) {
   // `line` is the line shown in the move list; `ply` is how far along it we are.
   const [line, setLine] = useState<string[]>(() => extendMain(rep.moves, startLine));
   const [ply, setPly] = useState(startLine.length);
   const [orientation, setOrientation] = useState<Color>(rep.side);
   const [resync, setResync] = useState(0);
   const [confirm, setConfirm] = useState<string[] | null>(null); // a move (path) waiting to be deleted
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkText, setBulkText] = useState("");
-  const [bulkMsg, setBulkMsg] = useState<string[]>([]);
+  const [picking, setPicking] = useState(false); // the "which move?" pop-up
 
   const curPath = useMemo(() => line.slice(0, ply), [line, ply]);
   const moves = useMemo(() => ucisToMoves(line), [line]);
@@ -75,7 +75,15 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
   const selectChild = (uci: string) => {
     if (line[ply] !== uci) setLine(extendMain(rep.moves, [...curPath, uci]));
     setPly(ply + 1);
+    setPicking(false);
   };
+
+  // Stepping forward where the repertoire branches asks which move to follow
+  const forward = () => {
+    if (children.length > 1) setPicking(true);
+    else goTo(ply + 1);
+  };
+  const select = (i: number) => (i === ply + 1 ? forward() : goTo(i));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -85,9 +93,9 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
         e.target instanceof HTMLSelectElement
       )
         return;
-      if (confirm) return;
+      if (confirm || picking) return;
       if (e.key === "ArrowLeft") goTo(ply - 1);
-      else if (e.key === "ArrowRight") goTo(ply + 1);
+      else if (e.key === "ArrowRight") forward();
       else if (e.key === "ArrowUp" || e.key === "Home") goTo(0);
       else if (e.key === "ArrowDown" || e.key === "End") goTo(line.length);
       else if (e.key.toLowerCase() === "f") flip();
@@ -96,7 +104,7 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [ply, line.length, confirm]);
+  }, [ply, line.length, confirm, picking, children.length]);
 
   const handleMove = (from: Key, to: Key, promotion?: PromotionRole) => {
     if (!dests.get(from)?.includes(to)) {
@@ -129,27 +137,6 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
     setLine(extendMain(nextMoves, curPath));
   };
 
-  const addBulk = () => {
-    try {
-      const before = countMoves(rep.moves);
-      const res = addLinesFromText(rep.moves, bulkText);
-      if (res.addedLines > 0) {
-        change((r) => ({ ...r, moves: res.moves }));
-        setLine(extendMain(res.moves, curPath));
-      }
-      const newMoves = countMoves(res.moves) - before;
-      setBulkMsg([
-        res.addedLines > 0
-          ? `Added ${res.addedLines} line${res.addedLines === 1 ? "" : "s"} (${newMoves} new move${newMoves === 1 ? "" : "s"}; moves you already had are shared).`
-          : "Nothing was added.",
-        ...res.errors,
-      ]);
-      if (res.errors.length === 0 && res.addedLines > 0) setBulkText("");
-    } catch (e) {
-      setBulkMsg([e instanceof Error ? e.message : "Couldn't read that."]);
-    }
-  };
-
   const nextSans = children.map((c) => pvToSan(here.fen, [c.uci], 1));
   const heading =
     children.length === 0
@@ -164,6 +151,7 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
   return (
     <div className="game-layout">
       <BackButton onClick={onBack} label="Done" />
+      <MoveStrip sans={built.sans} viewIndex={ply} onSelect={select} />
       <div className="board-col">
         <div className="bar-spacer" />
         <Board
@@ -182,11 +170,12 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
         <div className="bar-spacer" />
       </div>
 
-      <div className="side-panel wide">
+      <div className="side-panel wide game-panel">
         <div className="status">
           <span className="quiet">Editing: {rep.name || "Untitled repertoire"}</span>
           <span className="badges">
             <span className="badge">{rep.side === "white" ? "White" : "Black"}</span>
+            <DotsMenu items={[{ label: "Edit name / description", onClick: onEditDetails }]} />
           </span>
         </div>
         <div className="header-note">
@@ -210,22 +199,9 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
         <div className="guide-notes">
           <div className="line-editor">
             {ply === 0 ? (
-              <>
-                <input
-                  className="opening-search"
-                  value={rep.name}
-                  placeholder="Repertoire name"
-                  onChange={(e) => change((r) => ({ ...r, name: e.target.value }))}
-                />
-                <div className="field-label">Description of this repertoire</div>
-                <textarea
-                  className="paste-box"
-                  rows={4}
-                  placeholder="What is this repertoire about? Plans, ideas, who it suits..."
-                  value={rep.description}
-                  onChange={(e) => change((r) => ({ ...r, description: e.target.value }))}
-                />
-              </>
+              <div className="note">
+                Play a first move on the board to start a line. To rename this repertoire or write a description, use the ⋯ menu.
+              </div>
             ) : (
               <>
                 <div className="field-label">
@@ -301,45 +277,13 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
           moves={moves}
           viewIndex={ply}
           timed={false}
-          onSelect={goTo}
+          onSelect={select}
           marks={marks}
           names={{
             white: rep.side === "white" ? "You" : "Opponent",
             black: rep.side === "black" ? "You" : "Opponent",
           }}
         />
-
-        <div className="add-guide">
-          <button onClick={() => setBulkOpen((v) => !v)}>
-            {bulkOpen ? "Hide: add several lines at once" : "Add several lines at once"}
-          </button>
-          {bulkOpen && (
-            <>
-              <div className="note">
-                Paste one line of moves per row, from the starting position (for example “1. e4 c5 2. Nf3 d6 3. d4
-                cxd4”), or paste a PGN with variations. Every row becomes a line; moves you already have are
-                shared.
-              </div>
-              <textarea
-                className="paste-box"
-                rows={7}
-                placeholder={"1. e4 e5 2. Nf3 Nc6 3. Bb5 a6\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5\n1. d4 d5 2. c4 e6"}
-                value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
-              />
-              <div className="buttons">
-                <button className="primary" disabled={!bulkText.trim()} onClick={addBulk}>
-                  Add lines
-                </button>
-              </div>
-              {bulkMsg.map((m, i) => (
-                <div key={i} className={i === 0 ? "note" : "error-text"}>
-                  {m}
-                </div>
-              ))}
-            </>
-          )}
-        </div>
 
         <div className="buttons">
           <button onClick={flip}>Flip (F)</button>
@@ -349,6 +293,29 @@ export function RepertoireBuilder({ rep, change, saveError, startLine, onBack }:
           </button>
         </div>
       </div>
+
+      {picking && (
+        <div className="guide-overlay" onClick={() => setPicking(false)}>
+          <div className="guide-overlay-box" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-text">Which move?</div>
+            <div className="pick-list">
+              {children.map((c, i) => (
+                <button key={c.uci} onClick={() => selectChild(c.uci)}>
+                  <span className="next-san">{nextSans[i]}</span>
+                  {c.note.trim() && <span className="mark notemark">📝</span>}
+                  <span className="note">
+                    {countLines([c])} branch{countLines([c]) === 1 ? "" : "es"}
+                  </span>
+                  {i === 0 && <span className="guide-badge">main</span>}
+                </button>
+              ))}
+            </div>
+            <div className="confirm-buttons">
+              <button onClick={() => setPicking(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirm && (
         <div className="guide-overlay" onClick={() => setConfirm(null)}>

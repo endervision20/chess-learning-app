@@ -4,28 +4,7 @@ import { Chessground } from "chessground";
 import type { Api } from "chessground/api";
 import type { DrawShape } from "chessground/draw";
 import type { Key } from "chessground/types";
-import { Chess } from "chessops/chess";
-import { parseFen } from "chessops/fen";
-import { playSound, type SoundKind } from "../sounds";
 import type { Color, PromotionRole } from "../types";
-
-function countPieces(fen: string): number {
-  let n = 0;
-  for (const ch of fen.split(" ")[0]) if (/[a-zA-Z]/.test(ch)) n++;
-  return n;
-}
-
-/** Which sound goes with the move that turned `before` into `after`: mate, check, capture or a plain move. */
-function soundFor(before: string, after: string): SoundKind {
-  try {
-    const pos = Chess.fromSetup(parseFen(after).unwrap()).unwrap();
-    if (pos.isCheckmate()) return "mate";
-    if (pos.isCheck()) return "check";
-  } catch {
-    // an unusual position: fall through to capture / move
-  }
-  return countPieces(after) < countPieces(before) ? "capture" : "move";
-}
 
 const GLYPH: Record<Color, Record<PromotionRole, string>> = {
   white: { queen: "♕", rook: "♖", bishop: "♗", knight: "♘" },
@@ -123,15 +102,6 @@ export function Board({
       cgRef.current = null;
     };
   }, []);
-
-  // Sounds: play one whenever the position changes by a move (yours, the bot's, or stepping through a game)
-  const prevFen = useRef(fen);
-  useEffect(() => {
-    const before = prevFen.current;
-    prevFen.current = fen;
-    if (before === fen || !lastMove) return;
-    playSound(soundFor(before, fen));
-  }, [fen]);
 
   // Chessground works out which square you touched from a cached copy of the board's position, and only
   // clears that cache on scroll/resize. If anything above the board shifts (a bar appears, the status bar

@@ -1444,7 +1444,7 @@ body.line-dragging .folder-tile { outline: 1px dashed #6f8f4a; }
   outline: 2px solid #81b64c !important;
   background: #3f4a35;
 }
-/* ===== Phone layout (this REPLACES the earlier mobile.css) =====
+/* ===== Phone layout (this REPLACES the earlier mobile.css; it is the whole phone stylesheet) =====
    Put this at the very END of App.css. Delete any phone blocks from earlier versions first:
    every @media (max-width: 700px) block I gave you, and the `html { touch-action: manipulation; }` line. */
 
@@ -1544,9 +1544,34 @@ html { touch-action: manipulation; }
   .nav-buttons button { padding: 10px 0; font-size: 18px; }
   .game-layout .action-area, .game-layout .result { order: 12; }
 
-  /* game setup: the settings and the Start button come first, the board preview below them */
-  .config-layout .side-panel > * { order: 5; }
-  .setup-card { overflow: visible; }
+  /* game setup: the settings sit in a panel laid ON TOP of the board (the board stays where it is) */
+  .config-layout { position: relative; }
+  .config-layout .side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: absolute;
+    z-index: 20;
+    top: 60px;
+    left: 8px;
+    right: 8px;
+    bottom: 12px;
+    padding: 12px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    background: rgba(38, 36, 33, 0.97);
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  }
+  .config-layout .side-panel > * { order: 0; width: auto; max-width: none; flex: none; }
+  .config-layout .setup-card { overflow: visible; }
+  /* Start stays reachable at the bottom of the panel */
+  .config-layout .side-panel > .buttons {
+    position: sticky;
+    bottom: -12px;
+    background: #262421;
+    padding: 8px 0 4px;
+  }
 
   /* games: the full move list is replaced by the sideways one above the board */
   .game-panel .move-list { display: none; }
@@ -1569,4 +1594,20 @@ html { touch-action: manipulation; }
   /* no details text on the paused / recent game rows */
   .log-meta, .log-main .badge, .log-main.static .note { display: none; }
 }
+
+/* ===== all sizes ===== */
+
+/* "Which move?" pop-up in the repertoire builder */
+.pick-list { display: flex; flex-direction: column; gap: 8px; min-width: 240px; margin: 10px 0; }
+.pick-list button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 12px 14px; font-size: 16px; }
+
+/* Tiles per row (Settings > Appearance). Automatic when the setting is "Auto". */
+.guide-tiles {
+  grid-template-columns: repeat(var(--tile-cols, auto-fill), minmax(var(--tile-min, 190px), 1fr));
+}
+.guide-tile { min-width: 0; }
+html[data-tile-cols="3"] .tile-name { font-size: 12px; }
+html[data-tile-cols="4"] .tile-name, html[data-tile-cols="5"] .tile-name { font-size: 11px; }
+html[data-tile-cols="4"] .guide-tiles, html[data-tile-cols="5"] .guide-tiles { gap: 6px; }
+html[data-tile-cols="4"] .guide-tile, html[data-tile-cols="5"] .guide-tile { padding: 4px; gap: 4px; }
 

@@ -189,6 +189,16 @@ export function SettingsPage({ settings: s, onChange, onBack }: SettingsPageProp
               onChange={(v) => set("boardScale", v / 100)}
               note="Scales the board on the Play, Analysis and Review screens."
             />
+            <SliderRow
+              label="Tiles per row"
+              min={0}
+              max={5}
+              step={1}
+              value={s.tileColumns}
+              format={(v) => (v === 0 ? "Auto" : String(v))}
+              onChange={(v) => set("tileColumns", v)}
+              note="For the tile views of openings, repertoires and lines. Auto fits as many as the screen allows; 1 to 5 sets it exactly, so a higher number gives smaller tiles."
+            />
           </Section>
           <Section title="Colour">
             <Row label="Accent colour" note="Used for the main buttons and sliders.">
@@ -308,12 +318,6 @@ export function SettingsPage({ settings: s, onChange, onBack }: SettingsPageProp
               label="Ask before resigning"
               value={s.confirmResign}
               onChange={(v) => set("confirmResign", v)}
-            />
-            <Toggle
-              label="Play move sounds"
-              note="Move, capture, check and checkmate sounds."
-              value={s.sounds}
-              onChange={(v) => set("sounds", v)}
             />
             <SliderRow
               label="Paused games to keep"
